@@ -1,0 +1,8 @@
+
+*.json
+*.log
+*.png
+*.txt
+*.dot
+*.gz
+*.xml
