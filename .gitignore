@@ -6,3 +6,5 @@
 *.dot
 *.gz
 *.xml
+*.pickle
+*.pkl
