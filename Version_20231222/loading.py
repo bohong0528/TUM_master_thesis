@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+import numpy as np
 
 def load_data(file_list, df_activities, df_links_network):
     data_frames = []
@@ -72,7 +73,7 @@ def load_data(file_list, df_activities, df_links_network):
             df_rushhr.loc[:, 'rush_hour'] = 0
             df_rushhr.loc[df_rushhr['end_time'].between(pd.to_timedelta('08:00:00'), pd.to_timedelta('10:00:00'), inclusive='both'), 'rush_hour'] = 1
             df_rushhr.loc[df_rushhr['end_time'].between(pd.to_timedelta('16:00:00'), pd.to_timedelta('19:00:00'), inclusive='both'), 'rush_hour'] = 1
-            df_rushhr.drop(['end_time', 'max_dur', 'zoneId', 'cemdapStopDuration_s'], axis=1, inplace=True)
+            df_rushhr = df_rushhr[['link', 'rush_hour']]
             df_rushhragg = df_rushhr.groupby(by="link").sum()['rush_hour'].reset_index(drop=False)
             
             df_maxduragg = df_activities[df_activities['max_dur']!=-1].groupby(by='link')['max_dur'].sum().reset_index(drop=False)
@@ -80,8 +81,33 @@ def load_data(file_list, df_activities, df_links_network):
             df_activities['cemdapStopDuration_s'] = df_activities['cemdapStopDuration_s'].astype(float)
             df_cemagg = df_activities[df_activities['cemdapStopDuration_s']!=-1].groupby(by='link')['cemdapStopDuration_s'].sum().reset_index(drop=False)
             
+            df_activities['income'] = df_activities['income'].astype(float)
+            df_income = df_activities[df_activities['income']!=-1].groupby(by='link')['income'].sum().reset_index(drop=False)
+            df_income_avg = df_activities[df_activities['income']!=-1].groupby(by='link')['income'].mean().reset_index(drop=False)
+            df_income_avg.columns = ['link', 'income_avg']
+            
+            df_activities['score'] = df_activities['score'].astype(float)
+            df_score = df_activities[df_activities['score']!=-1].groupby(by='link')['score'].sum().reset_index(drop=False)
+            df_score_avg = df_activities[df_activities['score']!=-1].groupby(by='link')['score'].mean().reset_index(drop=False)
+            df_score_avg.columns = ['link', 'score_avg']
+            
+            df_zone = df_activities[df_activities['home-activity-zone']!=-1].groupby(by='link')['home-activity-zone'].agg(lambda x: '_'.join(x.unique())).reset_index(drop=False)
+            df_zone.columns = ['link', 'home-activity-zone']
+
             df_temp = df_links.merge(df_links_network, how='left', on=['start_node_x','start_node_y','end_node_x','end_node_y'])
             df_temp = df_temp[['link_id_x','link_from','link_to','link_id_y','from', 'to', 'type']]
+            
+            df_temp = df_temp.merge(df_income, how='left', left_on='link_id_y', right_on='link')
+            df_temp.drop('link', axis=1, inplace=True)
+            df_temp = df_temp.merge(df_income_avg, how='left', left_on='link_id_y', right_on='link')
+            df_temp.drop('link', axis=1, inplace=True)
+            df_temp = df_temp.merge(df_score, how='left', left_on='link_id_y', right_on='link')
+            df_temp.drop('link', axis=1, inplace=True)    
+            df_temp = df_temp.merge(df_score_avg, how='left', left_on='link_id_y', right_on='link')
+            df_temp.drop('link', axis=1, inplace=True)  
+            df_temp = df_temp.merge(df_zone, how='left', left_on='link_id_y', right_on='link')
+            df_temp.drop('link', axis=1, inplace=True)    
+            
             df_temp = df_temp.merge(df_act_agg, how='left', left_on='link_id_y', right_on='link')
             df_temp.drop('link', axis=1, inplace=True)
             df_temp = df_temp.merge(df_rushhragg, how='left', left_on='link_id_y', right_on='link')
@@ -89,9 +115,10 @@ def load_data(file_list, df_activities, df_links_network):
             df_temp = df_temp.merge(df_maxduragg, how='left', left_on='link_id_y', right_on='link')
             df_temp.drop('link', axis=1, inplace=True)
             df_temp = df_temp.merge(df_cemagg, how='left', left_on='link_id_y', right_on='link')
-            df_temp.fillna({'cemdapStopDuration_s':-1, 'max_dur':-1, 'rush_hour': -1, 'go_to_sum': -1}, inplace=True)
-            df_temp = df_temp[['link_id_x', 'go_to_sum', 'rush_hour', 'max_dur', 'cemdapStopDuration_s', 'type']]
+            df_temp.fillna({'cemdapStopDuration_s':-1, 'max_dur':-1, 'rush_hour': -1, 'go_to_sum': -1, 'income': -1, 'income_avg': -1, 'score': -1, 'score_avg': -1, 'home-activity-zone': 'default'}, inplace=True)
             
+            df_temp = df_temp[['link_id_x', 'go_to_sum', 'income','income_avg', 'score', 'score_avg', 'home-activity-zone', 'rush_hour', 'max_dur', 'cemdapStopDuration_s', 'type']]
+
             df_links = df_links.merge(df_temp, how='left', left_on='link_id', right_on='link_id_x')
             df_links.drop('link_id_x', axis=1, inplace=True)
             df_links['length_per_capacity_ratio'] = df_links['link_length'] / df_links['link_capacity']
@@ -100,6 +127,7 @@ def load_data(file_list, df_activities, df_links_network):
             df_links['speed_times_capacity'] = df_links['link_freespeed'] * df_links['link_capacity']
             df_links['length_times'] = df_links['link_length'] / df_links['link_freespeed']
             df_links['capacity_divided_by_lanes'] = df_links['link_capacity'] / df_links['link_permlanes']
+            
 
         data_frames.append(df_links)
     return pd.concat(data_frames, ignore_index=True)
