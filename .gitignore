@@ -8,3 +8,5 @@
 *.xml
 *.pickle
 *.pkl
+*.html
+*.xlsx

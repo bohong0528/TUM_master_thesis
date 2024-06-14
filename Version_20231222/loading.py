@@ -125,7 +125,7 @@ def load_data(file_list, df_activities, df_links_network):
             df_links['speed_capacity_ratio'] = df_links['link_freespeed'] / df_links['link_capacity']
             df_links['length_times_lanes'] = df_links['link_length'] * df_links['link_permlanes']
             df_links['speed_times_capacity'] = df_links['link_freespeed'] * df_links['link_capacity']
-            df_links['length_times'] = df_links['link_length'] / df_links['link_freespeed']
+            df_links['link_times'] = df_links['link_length'] / df_links['link_freespeed']
             df_links['capacity_divided_by_lanes'] = df_links['link_capacity'] / df_links['link_permlanes']
             
 
